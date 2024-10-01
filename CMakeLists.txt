@@ -35,10 +35,9 @@ add_subdirectory(external/HighFive)
 
 include_directories(src)
 file(GLOB source_list RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-    src/*.cpp
-    src/io/input/*.cpp
-    src/io/output/*.cpp
-    src/util/*.cpp
+    src/main.cpp
+    src/io/output/pretty_print.cpp
+    src/computation/random.cpp
 )
 
 add_executable(${PROJECT_NAME} ${source_list})

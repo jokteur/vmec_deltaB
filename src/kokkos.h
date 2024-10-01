@@ -30,7 +30,7 @@
 // #endif
 
 #ifndef DEVICE
-#define MemSpace Kokkos::HostSpace
+#define MemorySpace Kokkos::HostSpace
 #define DEVICE Kokkos::HostSpace
 #define DEVICEexec Kokkos::View<double*, HOST>::execution_space
 #define DEVICEmem Kokkos::HostSpace::memory_space
