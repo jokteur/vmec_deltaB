@@ -52,38 +52,38 @@ decltype(auto) to_fixed_sized_rank(const T& input) {
 template<typename OutType, typename T, typename = typename std::enable_if<is_kokkos_view<T>()>::type>
 OutType to_cpu(const T& input) {
     auto mirror = Kokkos::create_mirror_view(input);
-    if constexpr (OutType::Rank == 1) {
+    if constexpr (OutType::rank == 1) {
         OutType output(input.label(), input.extent(0));
         // This is doing two copies, but we want to force to OutType
         Kokkos::deep_copy(mirror, input);
         Kokkos::deep_copy(output, mirror);
         return output;
     }
-    else if constexpr (OutType::Rank == 2) {
+    else if constexpr (OutType::rank == 2) {
         OutType output(input.label(), input.extent(0), input.extent(1));
         Kokkos::deep_copy(mirror, input);
         Kokkos::deep_copy(output, mirror);
         return output;
     }
-    else if constexpr (OutType::Rank == 3) {
+    else if constexpr (OutType::rank == 3) {
         OutType output(input.label(), input.extent(0), input.extent(1), input.extent(2));
         Kokkos::deep_copy(mirror, input);
         Kokkos::deep_copy(output, mirror);
         return output;
     }
-    else if constexpr (OutType::Rank == 4) {
+    else if constexpr (OutType::rank == 4) {
         OutType output(input.label(), input.extent(0), input.extent(1), input.extent(2), input.extent(3));
         Kokkos::deep_copy(mirror, input);
         Kokkos::deep_copy(output, mirror);
         return output;
     }
-    else if constexpr (OutType::Rank == 5) {
+    else if constexpr (OutType::rank == 5) {
         OutType output(input.label(), input.extent(0), input.extent(1), input.extent(2), input.extent(3), input.extent(4));
         Kokkos::deep_copy(mirror, input);
         Kokkos::deep_copy(output, mirror);
         return output;
     }
-    else if constexpr (OutType::Rank == 6) {
+    else if constexpr (OutType::rank == 6) {
         OutType output(input.label(), input.extent(0), input.extent(1), input.extent(2), input.extent(3), input.extent(4), input.extent(5));
         Kokkos::deep_copy(mirror, input);
         Kokkos::deep_copy(output, mirror);

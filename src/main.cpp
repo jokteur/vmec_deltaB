@@ -33,12 +33,14 @@ struct FourierArray {
         int num_n = xn.extent(0);
 
         double sum = 0.0;
+        double uu = u(u_idx);
+        double vv = v(v_idx);
         for (int m = 0; m < num_n; m++) {
             if (has_cos) {
-                sum += cos_coefficient(s_idx, m) * Kokkos::cos(xm(m) * u(u_idx) - xn(m) * v(v_idx));
+                sum += cos_coefficient(s_idx, m) * Kokkos::cos(xm(m) * uu - xn(m) * vv);
             }
             if (has_sin) {
-                sum += sin_coefficient(s_idx, m) * Kokkos::sin(xm(m) * u(u_idx) - xn(m) * v(v_idx));
+                sum += sin_coefficient(s_idx, m) * Kokkos::sin(xm(m) * uu - xn(m) * vv);
             }
         }
         result(u_idx, v_idx) = sum;
@@ -111,12 +113,12 @@ int main(int argc, char* argv[]) {
         for (int s = 0;s < file.array.num_surfaces();s++) {
             Kokkos::fence();
             timer.reset();
-            auto result = evaluate_surface(file.array, 0, file.u, file.v);
+            auto result = evaluate_surface(file.array, s, file.u, file.v);
             Kokkos::fence();
             double time = timer.seconds();
             auto result_cpu = to_cpu<Kokkos::View<double**, HOST>>(result);
-            println("s: {}, Array: {}", s, format_array(result_cpu));
-            println("Time to evaluate: {}", time);
+            // println("s: {}, Array: {}", s, format_array(result_cpu));
+            println("s: {}, Time to evaluate: {}", s, time);
         }
 
         // HighFive::File out_file(argv[2], HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate);
