@@ -11,6 +11,12 @@ struct FourierArray {
     Kokkos::View<double**, DEVICE> cos_coefficient;
     Kokkos::View<double**, DEVICE> sin_coefficient;
 
+    // For evaluation
+    Kokkos::View<double*, DEVICE> u;
+    Kokkos::View<double*, DEVICE> v;
+    size_t s_idx;
+    Kokkos::View<double**, DEVICE> result;
+
     bool has_cos = false;
     bool has_sin = false;
 
@@ -23,32 +29,33 @@ struct FourierArray {
         }
     }
 
-    Kokkos::View<double**, DEVICE> evaluate_surface(int s_idx, const Kokkos::View<double*, DEVICE>& u, const Kokkos::View<double*, DEVICE>& v) {
+    void operator()(const int& u_idx, const int& v_idx) const {
         int num_n = xn.extent(0);
-        int ns = num_surfaces();
 
-        Kokkos::View<double**, DEVICE> result("result", u.extent(0), v.extent(0));
-
-        auto policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({ 0, 0 }, { u.extent(0), v.extent(0) });
-        // auto policy = Kokkos::RangePolicy<>(0,  ns);
-        Kokkos::parallel_for("evaluate", policy, KOKKOS_LAMBDA(const int& u_idx, const int& v_idx) {
-            double sum = 0.0;
-            sum = 0.0;
-            for (int m = 0; m < xm.extent(0); m++) {
-                if (has_cos) {
-                    sum += cos_coefficient(s_idx, m) * Kokkos::cos(xm(m) * u(u_idx) - xn(m) * v(v_idx));
-                }
-                if (has_sin) {
-                    sum += sin_coefficient(s_idx, m) * Kokkos::sin(xm(m) * u(u_idx) - xn(m) * v(v_idx));
-                }
+        double sum = 0.0;
+        for (int m = 0; m < num_n; m++) {
+            if (has_cos) {
+                sum += cos_coefficient(s_idx, m) * Kokkos::cos(xm(m) * u(u_idx) - xn(m) * v(v_idx));
             }
-            result(u_idx, v_idx) = sum;
-        });
-
-        return result;
+            if (has_sin) {
+                sum += sin_coefficient(s_idx, m) * Kokkos::sin(xm(m) * u(u_idx) - xn(m) * v(v_idx));
+            }
+        }
+        result(u_idx, v_idx) = sum;
     }
 };
 
+Kokkos::View<double**, DEVICE> evaluate_surface(FourierArray& array, int s_idx, const Kokkos::View<double*, DEVICE>& u, const Kokkos::View<double*, DEVICE>& v) {
+    Kokkos::View<double**, DEVICE> result("result", u.extent(0), v.extent(0));
+    array.result = result;
+    array.s_idx = s_idx;
+    array.u = u;
+    array.v = v;
+
+    auto policy = Kokkos::MDRangePolicy<Kokkos::Rank<2>>({ 0, 0 }, { u.extent(0), v.extent(0) });
+    Kokkos::parallel_for("evaluate", policy, array);
+    return array.result;
+}
 
 struct File {
     FourierArray array;
@@ -102,12 +109,12 @@ int main(int argc, char* argv[]) {
         auto file = load_fourier_array(argv[1]);
         Kokkos::fence();
         Kokkos::Timer timer;
-        for (int s = 0;s < file.array.num_surfaces();s++) {
-            auto result = file.array.evaluate_surface(s, file.u, file.v);
-            println("s: {}, Array: {}", s, result(0, 0));
-        }
+        // for (int s = 0;s < file.array.num_surfaces();s++) {
+            auto result = evaluate_surface(file.array, 0, file.u, file.v);
+        // }
         Kokkos::fence();
         double time = timer.seconds();
+            println("s: {}, Array: {}", 0, result(0, 0));
         println("Time to evaluate: {}", time);
 
         // HighFive::File out_file(argv[2], HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate);
