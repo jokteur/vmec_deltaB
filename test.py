@@ -18,10 +18,7 @@ out["xm"] = xm
 out["xn"] = xn
 out["sin_coefficient"] = bsubsmns
 
-theta = np.linspace(0, 2 * np.pi, 500)
-phi = np.linspace(0, 2 * np.pi, 500)
-
-out["u"] = theta
-out["v"] = phi
+out.attrs["u_size"] = 10000
+out.attrs["v_size"] = 10000
 out.attrs["has_sin"] = True
 out.attrs["has_cos"] = False
