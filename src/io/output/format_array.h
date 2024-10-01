@@ -5,6 +5,7 @@
 #include <mpi.h>
 #include "types.h"
 #include "util/template_util.h"
+#include "io/output/print.h"
 
 inline std::string print_n_chars(int num_spaces, char c = ' ') {
     std::string out;
@@ -103,36 +104,74 @@ std::string format_tensor(const T& array, const std::vector<size_t>& sizes, cons
 
 #define FORMAT_ARRAY_IMPL(keyword, max_width) \
 if keyword (array.rank() == 1) {                                                                                                                                     \
+    if (max_elements == 0)                                                                                                                                           \
+        max_elements = 10;                                                                                                                                           \
     if (max_width == 0)                                                                                                                                              \
-    for(size_t i = 0;i < array.size();i++)                                                                                                                           \
+    for(int i = 0;i < (int)array.size();i++) {                                                                                                                       \
         max_width = std::max(fmt::format("{:" + fmt_args + "}", array(i)).length(), max_width);                                                                      \
+        if (max_elements < array.size() && i == max_elements / 2 - 1)                                                                                                \
+            i = array.size() - max_elements / 2 - 1;                                                                                                                 \
+    }                                                                                                                                                                \
                                                                                                                                                                      \
     result += format_line(array, {array.extent(0)}, max_elements, 0, max_width, fmt_args);                                                                           \
 }                                                                                                                                                                    \
 else if keyword (array.rank() == 2) {                                                                                                                                \
+    if (max_elements == 0)                                                                                                                                           \
+        max_elements = 7;                                                                                                                                            \
     if (max_width == 0)                                                                                                                                              \
-    for(size_t i = 0;i < array.extent(0);i++)                                                                                                                        \
-        for(size_t j = 0;j < array.extent(1);j++)                                                                                                                    \
+    for(int i = 0;i < (int)array.extent(0);i++) {                                                                                                                    \
+        for(int j = 0;j < (int)array.extent(1);j++) {                                                                                                                \
             max_width = std::max(fmt::format("{:" + fmt_args + "}", array(i, j)).length(), max_width);                                                               \
+            if (max_elements < array.extent(1) && j == max_elements / 2 - 1)                                                                                         \
+                j = array.extent(1) - max_elements / 2 - 1;                                                                                                          \
+        }                                                                                                                                                            \
+        if (max_elements < array.extent(0) && i == max_elements / 2 - 1)                                                                                             \
+            i = array.extent(0) - max_elements / 2 - 1;                                                                                                              \
+    }                                                                                                                                                                \
                                                                                                                                                                      \
     result += format_matrix(array, {array.extent(0), array.extent(1)}, {max_elements, max_elements}, 0, max_width, fmt_args);                                        \
 }                                                                                                                                                                    \
 else if keyword (array.rank() == 3) {                                                                                                                                \
+    if (max_elements == 0)                                                                                                                                           \
+        max_elements = 5;                                                                                                                                            \
     if (max_width == 0)                                                                                                                                              \
-    for(size_t i = 0;i < array.extent(0);i++)                                                                                                                        \
-        for(size_t j = 0;j < array.extent(1);j++)                                                                                                                    \
-            for (size_t k = 0;k < array.extent(2);k++)                                                                                                               \
+    for(int i = 0;i < (int)array.extent(0);i++) {                                                                                                                    \
+        for(int j = 0;j < (int)array.extent(1);j++) {                                                                                                                \
+            for (int k = 0;k < (int)array.extent(2);k++) {                                                                                                           \
                 max_width = std::max(fmt::format("{:" + fmt_args + "}", array(i, j, k)).length(), max_width);                                                        \
+                if (max_elements < array.extent(2) && k == max_elements / 2 - 1)                                                                                     \
+                    k = array.extent(2) - max_elements / 2 - 1;                                                                                                      \
+            }                                                                                                                                                        \
+            if (max_elements < array.extent(1) && j == max_elements / 2 - 1)                                                                                         \
+                j = array.extent(1) - max_elements / 2 - 1;                                                                                                          \
+        }                                                                                                                                                            \
+        if (max_elements < array.extent(0) && i == max_elements / 2 - 1)                                                                                             \
+            i = array.extent(0) - max_elements / 2 - 1;                                                                                                              \
+    }                                                                                                                                                                \
                                                                                                                                                                      \
     result += format_tensor(array, {array.extent(0), array.extent(1), array.extent(2)}, {max_elements, max_elements, max_elements}, 0, max_width, fmt_args);         \
 }                                                                                                                                                                    \
 else if keyword (array.rank() == 4) {                                                                                                                                \
+    if (max_elements == 0)                                                                                                                                           \
+        max_elements = 3;                                                                                                                                            \
     if (max_width == 0)                                                                                                                                              \
-    for(size_t i = 0;i < array.extent(0);i++)                                                                                                                        \
-        for(size_t j = 0;j < array.extent(1);j++)                                                                                                                    \
-            for (size_t k = 0;k < array.extent(2);k++)                                                                                                               \
-                for (size_t l = 0;l < array.extent(3);l++)                                                                                                           \
+    for(int i = 0;i < (int)array.extent(0);i++) {                                                                                                                    \
+        for(int j = 0;j < (int)array.extent(1);j++) {                                                                                                                \
+            for (int k = 0;k < (int)array.extent(2);k++) {                                                                                                           \
+                for (int l = 0;l < (int)array.extent(3);l++) {                                                                                                       \
                     max_width = std::max(fmt::format("{:" + fmt_args + "}", array(i, j, k, l)).length(), max_width);                                                 \
+                    if (max_elements < array.extent(3) && l == max_elements / 2 - 1)                                                                                 \
+                        l = array.extent(3) - max_elements / 2 - 1;                                                                                                  \
+                }                                                                                                                                                    \
+                if (max_elements < array.extent(2) && k == max_elements / 2 - 1)                                                                                     \
+                    k = array.extent(2) - max_elements / 2 - 1;                                                                                                      \
+            }                                                                                                                                                        \
+            if (max_elements < array.extent(1) && j == max_elements / 2 - 1)                                                                                         \
+                j = array.extent(1) - max_elements / 2 - 1;                                                                                                          \
+        }                                                                                                                                                            \
+        if (max_elements < array.extent(0) && i == max_elements / 2 - 1)                                                                                             \
+            i = array.extent(0) - max_elements / 2 - 1;                                                                                                              \
+    }                                                                                                                                                                \
                                                                                                                                                                      \
     result += "[";                                                                                                                                                   \
     for (size_t i = 0;i < array.extent(0);i++) {                                                                                                                     \
@@ -152,9 +191,18 @@ else {                                                                          
     throw std::runtime_error("format_array: array rank not supported");                                                                                              \
 }
 
+/**
+ * @brief Format a Kokkos view as a string
+ * 
+ * @tparam T
+ * @param array Kokkos view to format
+ * @param fmt_args arguments that would be in a {:} format string, example: ".2f"
+ * @param max_elements maximum number of elements to print, 0 for default, -1 for all
+ * @param max_el_width maximum width of an element, 0 for default (calculated)
+ */
 template <typename T, typename = typename std::enable_if<is_kokkos_view<T>()>::type>
-std::string format_array(const T& array, const std::string& fmt_args = "", int max_elements = 10, size_t max_el_width = 0) {
-    if constexpr (std::is_same_v<typename T::memory_space, Kokkos::HostSpace>) {
+std::string format_array(const T& array, const std::string& fmt_args = "", int max_elements = 0, size_t max_el_width = 0) {
+    if constexpr (std::is_same_v<typename T::memory_space, HOST>) {
         std::string result = array.label() + " :\n";
         if constexpr (has_static_rank<T>()) {
             FORMAT_ARRAY_IMPL(constexpr, max_el_width)
@@ -165,7 +213,7 @@ std::string format_array(const T& array, const std::string& fmt_args = "", int m
         return result;
     }
     else {
-        auto arr = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), array);
+        auto arr = Kokkos::create_mirror_view_and_copy(HOST(), array);
         return format_array(arr, fmt_args, max_elements, max_el_width);
     }
 }
