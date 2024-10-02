@@ -1,6 +1,7 @@
 #include <iostream>
 #include "types.h"
 #include "io/input/read_h5.h"
+#include "io/output/to_file.h"
 #include "computation/compute.h"
 #include "fourier_array.h"
 
@@ -41,6 +42,26 @@ File load_fourier_array(const std::string& filename) {
     return out;
 }
 
+FourierArray find_delta_coefficients(FourierArray& array, const Kokkos::View<double*, DEVICE>& u, const Kokkos::View<double*, DEVICE>& v) {
+    FourierArray new_array = prepare_for_inverse_fourier(array.xm, array.xn, array.num_surfaces(), array.has_cos, array.has_sin);
+
+    for (int s_idx = 0;s_idx < array.num_surfaces();s_idx++) {
+        Kokkos::fence();
+        Kokkos::Timer timer;
+        auto field_3d = evaluate_surface(array, s_idx, u, v, false);
+        auto field_2d = evaluate_surface(array, s_idx, u, v, true);
+        auto delta = field_3d - field_2d;
+
+        inverse_fourier_at_surface(new_array, delta, u, v, s_idx);
+        Kokkos::fence();
+        double time = timer.seconds();
+        println("s: {}, Time to find delta: {}", s_idx, time);
+    }
+
+    return new_array;
+}
+
+
 int main(int argc, char* argv[]) {
     if (argc < 3) {
         std::cerr << "Usage: " << argv[0] << " <filename> <out_file>" << std::endl;
@@ -56,21 +77,19 @@ int main(int argc, char* argv[]) {
     Kokkos::initialize(argc, argv);
     {
         auto file = load_fourier_array(argv[1]);
-        Kokkos::Timer timer;
-        for (int s = 0;s < file.array.num_surfaces();s++) {
-            Kokkos::fence();
-            timer.reset();
-            auto result = evaluate_surface(file.array, s, file.u, file.v);
-            Kokkos::fence();
-            double time = timer.seconds();
-            auto result_cpu = to_cpu<Kokkos::View<double**, HOST>>(result);
-            // println("s: {}, Array: {}", s, format_array(result_cpu));
-            println("s: {}, Time to evaluate: {}", s, time);
-        }
+        auto array = find_delta_coefficients(file.array, file.u, file.v);
 
-        // HighFive::File out_file(argv[2], HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate);
-        // HighFive::DataSet dataset = out_file.createDataSet<double>("result", HighFive::DataSpace::From(result));
-        // dataset.write(result.data());
+        HighFive::File out_file(argv[2], HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate);
+        H5::write_dataset(out_file, out_file, "xm", array.xm);
+        H5::write_dataset(out_file, out_file, "xn", array.xn);
+        out_file.createAttribute<bool>("has_cos", HighFive::DataSpace::From(true)).write(array.has_cos);
+        out_file.createAttribute<bool>("has_sin", HighFive::DataSpace::From(true)).write(array.has_sin);
+        if (array.has_cos) {
+            H5::write_dataset(out_file, out_file, "cos_coefficient", array.cos_coefficient);
+        }
+        if (array.has_sin) {
+            H5::write_dataset(out_file, out_file, "sin_coefficient", array.sin_coefficient);
+        }
     }
     Kokkos::finalize();
     MPI_Finalize();

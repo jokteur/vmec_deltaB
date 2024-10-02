@@ -18,7 +18,7 @@ out["xm"] = xm
 out["xn"] = xn
 out["sin_coefficient"] = bsubsmns
 
-out.attrs["u_size"] = 500
-out.attrs["v_size"] = 500
+out.attrs["u_size"] = 1000
+out.attrs["v_size"] = 1000
 out.attrs["has_sin"] = True
 out.attrs["has_cos"] = False
